@@ -269,10 +269,10 @@ Standard ESP-NOW broadcasts are "Fire and Forget"—there is no guarantee the re
 Previously, this project used dynamic `STA ↔ AP` switching. However, benchmarking showed that `esp_wifi_set_mode` causes a brief radio silence. 
 *   **The Solution:** All nodes now stay in `STA` mode permanently. This results in a cleaner radio environment (no phantom SSIDs), lower latency, and 100% receiver uptime, which is critical for a high-traffic flooding mesh.
 
-### 5. The "Multi-Hop Heartbeat" Problem (New in 0.4.0)
+### 5. The "Multi-Hop Heartbeat" Problem
 In a standard mesh, nodes often drop identical heartbeats to save bandwidth. This creates a "1-hop only" heartbeat where distant nodes falsely believe each other are offline. 
 *   **The Solution:** We solved this by adding an incrementing **Sequence Number** to every packet. Because the sequence number makes every heartbeat unique, intermediate nodes repeat them, allowing heartbeats to flow dynamically through the whole mesh.
 
-### 6. Identifying True Origin vs. Immediate Sender (New in 0.4.0)
+### 6. Identifying True Origin vs. Immediate Sender
 In ESP-NOW, hardware only tells you who *last* sent the packet. If Node B forwards a message from Node C to Node A, Node A thinks the message came from Node B. 
 *   **The Solution:** We parse the **Original MAC Address** directly from the encrypted payload so that nodes can "see" peers that are multiple hops away, maintaining accurate network maps without centralized routing.
