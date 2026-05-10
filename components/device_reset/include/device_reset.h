@@ -11,11 +11,11 @@
 #define DEVICE_RESET_H
 
 /**
- * @brief Checks for a Factory Reset trigger during device startup.
+ * @brief Initializes the factory reset background task.
  * 
- *        This is a generic device reset utility that can be expanded 
- *        to clear multiple subsystems (Mesh, WiFi, NVS, etc.).
+ *        This task continuously monitors the reset button during normal 
+ *        operation and triggers a full memory wipe and reboot if held for 3s.
  */
-void device_reset_check_trigger(void);
+void device_reset_init(void);
 
 #endif // DEVICE_RESET_H

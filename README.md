@@ -60,11 +60,10 @@ The system uses a high-priority background task to provide instant visual feedba
 Because nodes remember their peers permanently in NVS, you must perform a **Factory Reset** if you permanently remove a device from your network. Otherwise, the remaining nodes will permanently show a "Partial Mesh" (Blinking Green) state because they are still waiting for the missing device.
 
 **To perform a reset:**
-1.  Press and **hold your Primary Control Button (GPIO 1)** on your ESP32-S3.
-2.  While holding **GPIO 1**, press the **EN (Reset) button** or power the device on.
-3.  Continue holding the **button for 3 seconds**.
-4.  The RGB LED will **flash RED at medium speed (300ms)** for several cycles to confirm the mesh identity has been erased.
-5.  The node will now restart discovery and register the first new peers it hears as its new mesh family.
+1.  During normal operation, press and **hold your Factory Reset Button (GPIO 1)** on your ESP32-S3.
+2.  Continue holding the **button for exactly 3 seconds**.
+3.  The RGB LED will **rapidly flash RED (100ms)** for 3 seconds to visually confirm the mesh identity has been erased.
+4.  The node will automatically reboot, restart discovery, and register the first new peers it hears as its new mesh family.
 
 > [!IMPORTANT]
 > To decommission a node, you should ideally run this reset on **all remaining nodes** so they stop looking for the removed MAC address.
@@ -121,6 +120,40 @@ The project is strictly modular. Each component is a standalone directory under 
 ### 9. `shared_config` (Global Configuration)
 *   **Single Source of Truth:** Centralizes all GPIO assignments, Wi-Fi channels, Pub/Sub Keywords, Device Roles, and timeout constants. Modifying this one file reconfigures the entire project.
 
+## 🔒 Security: Technical Deep Dive
+
+The **ESP-NOW-MeshCore** uses a multi-layered security approach to protect messages against eavesdropping and tampering. Since standard ESP-NOW encryption can be complex to manage in a dynamic mesh, this project implements a custom **Application-Layer Encryption** system using **AES-128-CBC**.
+
+### 1. The Core Security Pillars
+Our protection mechanism is built on four technical pillars:
+
+*   **AES-128-CBC Encryption:** Every data packet is encrypted using the Advanced Encryption Standard with a 128-bit key in Cipher Block Chaining mode.
+*   **Unique Initialization Vectors (IV):** Every single transmission generates a fresh 16-byte random IV. This ensures that even if you send the same sensor data twice, the resulting "on-the-air" ciphertext looks completely different, preventing **Pattern Analysis** and **Replay Attacks**.
+*   **PKCS#7 Padding:** Ensures that payloads of any length are safely aligned to the 16-byte AES block requirement, preventing information leakage from message length.
+*   **Private Mesh Key:** Only nodes possessing the matching 16-character `NETWORK_API_KEY` can decrypt traffic, creating a secure, isolated island of communication.
+
+### 2. Lifecycle of a Protected Packet
+
+1.  **Generation:** The `message_provider` builds a plaintext string (e.g., `[NODE_A|MAC|SEQ] TEMP:25.0`).
+2.  **IV Injection:** The `security_manager` generates 16 bytes of true random data from the ESP32-S3 hardware RNG.
+3.  **Encryption:** The plaintext is padded (PKCS#7) and encrypted via `mbedtls` using the IV and the API Key.
+4.  **Assembly:** The final binary payload is constructed as: `[16-byte IV] + [Ciphertext]`.
+5.  **Transmission:** The packet is broadcast to the mesh.
+6.  **Decryption:** The receiver extracts the first 16 bytes (IV) and uses them along with its local API Key to decrypt the remaining ciphertext back into a readable string.
+
+### 3. Implementation Sample
+
+The security logic is encapsulated within the `security_manager` component. Here is a simplified look at how encryption is handled:
+
+```c
+// Sample: Encrypting a message before mesh broadcast
+uint8_t buffer[250];
+size_t length = security_manager_encrypt("ALARM_ACTIVE", buffer, sizeof(buffer));
+
+// The 'buffer' now contains:
+// [ 16 Bytes of Random Noise (IV) ] [ 16+ Bytes of AES-CBC Ciphertext ]
+```
+
 ---
 
 ## 🛠️ Hardware Setup
@@ -136,12 +169,14 @@ You need a visual indicator for the mesh health monitor. You have two choices:
 
 ### 2. Sample 2 & 3 Wiring (Remote Hardware Control)
 To test physical mesh interactions, wire the following components on **each** board:
-*   **Push Button (Sensor):** Connect one side of a momentary push-button to **GPIO 1** and the other side to **GND**. **Note:** Use an external **10kΩ pull-up resistor** between GPIO 1 and 3.3V for maximum protection.
+*   **Push Button (Sensor):** Connect one side of a momentary push-button to **GPIO 1** and the other side to **GND**. 
+    *   **Configuration:** If using an external **10kΩ pull-up resistor**, set `USE_INTERNAL_PULLUPS` to `0` in `shared_config.h`. If wiring directly to GND, set it to `1`.
 *   **External LED / Relay (Actuator):** Connect the positive pin of an LED (via a 220Ω resistor) or the signal pin of a Relay module to **GPIO 6**. Connect the negative pin to GND.
 
 ### 3. Sample 4 Wiring (4-Node Sync Control)
 To test the 4-channel synchronization across multiple nodes:
-*   **4 Push Buttons:** Connect to **GPIO 2, 3, 4, 5** and **GND**. **Note:** Connect each GPIO to 3.3V through a **10kΩ pull-up resistor** for maximum protection.
+*   **4 Push Buttons:** Connect to **GPIO 2, 3, 4, 5** and **GND**.
+    *   **Configuration:** Set `USE_INTERNAL_PULLUPS` in `shared_config.h` based on whether you are using external resistors or the ESP32's internal ones.
 *   **4 LEDs:** Connect to **GPIO 6, 7, 8, 9** (anodes) and **GND**.
 
 ### 4. Sample 5 Wiring (Industrial MOD-BUS Bridge)
@@ -205,6 +240,7 @@ All application constants are centralized in `components/shared_config/include/s
 *   **Mesh Health Timing:**
     *   `MESH_PEER_TIMEOUT_MS` (Default 6,000ms): Time before a node is declared offline.
     *   `MESH_KEEPALIVE_INTERVAL_MS` (Default 1,000ms): Frequency of heartbeat pings.
+*   **Pull-up Configuration:** Toggle `USE_INTERNAL_PULLUPS` between `1` (Internal) and `0` (External) to match your hardware wiring.
 
 ### 4. Security Configuration
 The network uses AES-128 encryption. To secure your private mesh:

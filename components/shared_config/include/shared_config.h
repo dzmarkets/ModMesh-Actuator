@@ -15,7 +15,7 @@
 // --- Node Identification ---
 // =============================================================================
 // Unique label for this node (each device in the mesh MUST have a unique label for diagnostics)
-#define NODE_LABEL "NODE_A"
+#define NODE_LABEL "NODE_B" // NODE_A, NODE_B, NODE_C, NODE_D, NODE_E
 
 // =============================================================================
 // --- Topic / Keyword Routing (Pub/Sub) ---
@@ -23,11 +23,11 @@
 // Keywords that THIS actuator listens for. If a sensor tags its data with any 
 // of these keywords (or "ALL"), this actuator will process it.
 // Use a comma-separated list for multiple keywords (e.g., "LIGHT,HVAC").
-#define ACTUATOR_KEYWORDS "LIGHT"
+#define ACTUATOR_KEYWORDS "LIGHT_C" 
 
 // Keywords that THIS sensor attaches to its outgoing data.
 // Use a comma-separated list (e.g., "LIGHT,HVAC") or "ALL" for broadcast.
-#define DATA_KEYWORDS "LIGHT"
+#define DATA_KEYWORDS "LIGHT_B"
 
 // =============================================================================
 // --- Device Role ---
@@ -97,6 +97,13 @@
 #define MESH_KEEPALIVE_INTERVAL_MS 1000
 
 // =============================================================================
+// --- Button / Input Configuration ---
+// =============================================================================
+// Set to 1 to use internal ESP32 pull-up resistors, 0 to use external resistors.
+// Note: External resistors (10kΩ) are recommended for maximum industrial stability.
+#define USE_INTERNAL_PULLUPS 1
+
+// =============================================================================
 // --- Application Samples Configuration ---
 // =============================================================================
 // Choose the active application sample:
@@ -105,7 +112,7 @@
 // 3: Remote Powering LED (Toggle Button, LED actuator)
 // 4: 4-Node Remote Control (4 Toggle Buttons, 4 LED actuators)
 // 5: MOD-BUS MAX485 (Send received data via Modbus)
-#define ACTIVE_APP_SAMPLE 2
+#define ACTIVE_APP_SAMPLE 3
 
 // Sample 2 & 3: Remote Powering LED GPIOs
 #define BUTTON_SENSOR_GPIO  2

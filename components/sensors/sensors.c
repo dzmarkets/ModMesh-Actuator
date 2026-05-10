@@ -27,17 +27,29 @@ void sensors_init(void)
 #elif ACTIVE_APP_SAMPLE == 2
     ESP_LOGI(TAG, "Initializing hardware sensors... (MOMENTARY BUTTON MODE)");
     gpio_set_direction(BUTTON_SENSOR_GPIO, GPIO_MODE_INPUT);
+#if USE_INTERNAL_PULLUPS
     gpio_pullup_en(BUTTON_SENSOR_GPIO);
+#else
+    gpio_pullup_dis(BUTTON_SENSOR_GPIO);
+#endif
 #elif ACTIVE_APP_SAMPLE == 3
     ESP_LOGI(TAG, "Initializing hardware sensors... (TOGGLE BUTTON MODE)");
     gpio_set_direction(BUTTON_SENSOR_GPIO, GPIO_MODE_INPUT);
-    gpio_pullup_dis(BUTTON_SENSOR_GPIO); // Using external resistors for protection
+#if USE_INTERNAL_PULLUPS
+    gpio_pullup_en(BUTTON_SENSOR_GPIO);
+#else
+    gpio_pullup_dis(BUTTON_SENSOR_GPIO);
+#endif
 #elif ACTIVE_APP_SAMPLE == 4
     ESP_LOGI(TAG, "Initializing hardware sensors... (4-NODE TOGGLE MODE)");
     const int btn_pins[4] = {BTN1_GPIO, BTN2_GPIO, BTN3_GPIO, BTN4_GPIO};
     for(int i = 0; i < 4; i++) {
         gpio_set_direction(btn_pins[i], GPIO_MODE_INPUT);
-        gpio_pullup_dis(btn_pins[i]); // Using external resistors for protection
+#if USE_INTERNAL_PULLUPS
+        gpio_pullup_en(btn_pins[i]);
+#else
+        gpio_pullup_dis(btn_pins[i]);
+#endif
     }
 #elif ACTIVE_APP_SAMPLE == 5
     ESP_LOGI(TAG, "Initializing hardware sensors... (MOD-BUS MODE)");

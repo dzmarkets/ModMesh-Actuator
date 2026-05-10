@@ -244,10 +244,10 @@ void app_main(void)
     actuators_init();          // Setup GPIOs and RTOS Queue for outputs (LEDs/relays)
 #endif
 
-    // --- Step 2: Modular Device Reset Check ---
-    // This encapsulated call handles the GPIO setup, 3s hold detection, 
-    // and visual Red-blink confirmation.
-    device_reset_check_trigger();
+    // --- Step 2: Modular Device Reset Task ---
+    // This initializes a background task that continuously monitors the
+    // reset button (GPIO 1) and will trigger a wipe and reboot if held for 3s.
+    device_reset_init();
 
     mesh_manager_init();       // Initialize the peer tracking table
     message_processor_init();  // Setup decryption and command handling
