@@ -1,6 +1,6 @@
 # ModMesh: Industrial Actuator Node Documentation
 
-![ModMesh Actuator Banner](../assets/actuator_banner.png)
+![ModMesh Actuator Banner](assets/actuator_banner.png)
 
 ## 📌 Introduction
 
