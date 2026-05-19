@@ -2,14 +2,17 @@
 // File Path: components/actuators/actuators.c
 // Brief:     Actuator management for ModMesh Actuator Node.
 // Author:    M. YOUCEF Yazid (yazid.youcef@gmail.com)
-// Version:   0.8.1 (Actuator Edition)
+// Version:   0.9.0
 // CreateDate: 2026-04-26
-// UpdateDate: 2026-05-11
+// UpdateDate: 2026-05-19
 //
 
 #include "actuators.h"
 #include "shared_config.h"
+#include "mesh_manager.h"
+#include "status_indicator.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "driver/gpio.h"
 #include <string.h>
 #include "freertos/FreeRTOS.h"
@@ -58,7 +61,34 @@ void actuators_init(void)
 
 void actuators_execute(const char *payload)
 {
-    if (!payload || !s_actuator_queue) return;
+    if (!payload) return;
+
+    // --- EMERGENCY NETWORK RESET (triggered by Gateway factory reset) ---
+    // Handle immediately without queueing, since this is an emergency reboot.
+    if (strstr(payload, "CMD:NETWORK_RESET") != NULL) {
+        ESP_LOGW(TAG, "⚡ NETWORK RESET RECEIVED from Gateway – killing output, wiping NVS, rebooting...");
+
+        // STEP 1: Immediately safe the hardware output to LOW
+        gpio_set_level(ACTUATOR_OUTPUT_GPIO, 0);
+
+        // STEP 2: Flash RED rapidly to visually confirm the remote reset
+        for (int i = 0; i < 10; i++) {
+            status_indicator_set_state(LED_STATE_DISCONNECTED);
+            vTaskDelay(pdMS_TO_TICKS(100));
+            status_indicator_set_state(LED_STATE_OFF);
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+
+        // STEP 3: Wipe the local NVS peer table (mirrors pressing our own reset button)
+        mesh_manager_factory_reset();
+
+        // STEP 4: Reboot to apply the clean state
+        ESP_LOGW(TAG, "Rebooting Actuator node...");
+        esp_restart();
+        return; 
+    }
+
+    if (!s_actuator_queue) return;
 
     actuator_cmd_t cmd;
     strncpy(cmd.payload, payload, MAX_PAYLOAD_LEN - 1);
@@ -116,13 +146,6 @@ static void process_command(const char *payload)
     }
     
     if (!keyword_match) return;
-
-    // --- EMERGENCY NETWORK RESET ---
-    if (strstr(payload, "CMD:NETWORK_RESET") != NULL) {
-        ESP_LOGW(TAG, "⚡ NETWORK EMERGENCY RESET RECEIVED! Killing outputs.");
-        gpio_set_level(ACTUATOR_OUTPUT_GPIO, 0);
-        return; 
-    }
 
     // --- Hardware Control Logic ---
     if (strstr(payload, "STATE:1") != NULL || strstr(payload, "CMD:LED_ON") != NULL) {
